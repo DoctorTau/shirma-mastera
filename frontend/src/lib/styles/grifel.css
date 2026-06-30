@@ -1,0 +1,75 @@
+/* "Грифель" design theme — maroon/parchment grimoire aesthetic.
+   Tokens extracted from the DM Companion iPad design mockup. */
+@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700&family=Spectral:ital,wght@0,400;0,600;0,700;1,400&display=swap');
+
+:root {
+	--gr-font-display: 'Cinzel', Georgia, serif;
+	--gr-font-body: 'Spectral', Georgia, serif;
+
+	--gr-maroon-dark: #561414;
+	--gr-maroon: #6e2020;
+	--gr-maroon-deep: #3f0f0f;
+	--gr-accent: #7a1f1f;
+	--gr-accent-shadow: #4f1212;
+
+	--gr-cream: #f3e3c6;
+	--gr-cream-soft: #e8c9a0;
+	--gr-cream-dim: #dcb98e;
+
+	--gr-parchment-list: #eadfc0;
+	--gr-parchment-panel: #efe6d3;
+	--gr-parchment-card: #f3ecda;
+	--gr-parchment-highlight: #f4e9d4;
+	--gr-parchment-footer: #e3d6ba;
+	--gr-parchment-border: #cdbb95;
+	--gr-parchment-border-strong: #d4c4a0;
+
+	--gr-ink: #2c2218;
+	--gr-ink-soft: #3a2c1c;
+	--gr-ink-muted: #8a7556;
+	--gr-ink-faint: #9a8666;
+
+	--gr-hp-good-1: #5a7d44;
+	--gr-hp-good-2: #43632f;
+	--gr-hp-mid-1: #c08a3a;
+	--gr-hp-mid-2: #a06c28;
+	--gr-hp-low: #7a1f1f;
+
+	--gr-player-bg: #3a4a6b;
+	--gr-player-fg: #dde6f2;
+	--gr-down-bg: #8a7a5e;
+	--gr-down-fg: #f0e6d2;
+
+	--gr-tag-warn-bg: #f4e3e0;
+	--gr-tag-warn-border: #cc9999;
+	--gr-tag-warn-fg: #7a1f1f;
+	--gr-tag-player-bg: #e6ebf3;
+	--gr-tag-player-border: #b6c0d4;
+	--gr-tag-player-fg: #3a4a6b;
+
+	--gr-radius-sm: 5px;
+	--gr-radius-md: 7px;
+	--gr-radius-lg: 9px;
+	--gr-radius-xl: 16px;
+
+	--gr-space-xs: 4px;
+	--gr-space-sm: 8px;
+	--gr-space-md: 12px;
+	--gr-space-lg: 16px;
+	--gr-space-xl: 24px;
+	--gr-space-2xl: 32px;
+	--gr-space-3xl: 48px;
+
+	--gr-input-bg: #fff;
+	--gr-input-border: var(--gr-parchment-border-strong);
+
+	--gr-page-bg: #211b15;
+}
+
+.gr-page {
+	min-height: 100vh;
+	background: var(--gr-page-bg);
+	background-image: radial-gradient(circle at 50% 0%, #2c241b 0%, #1a150f 70%);
+	font-family: var(--gr-font-body);
+	color: var(--gr-ink);
+}
