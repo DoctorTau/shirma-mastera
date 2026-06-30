@@ -1,6 +1,8 @@
 <script lang="ts">
 	import '$lib/styles/grifel.css';
 	import type { StatBlock } from '$lib/types';
+	import { slide } from 'svelte/transition';
+	import { cubicOut } from 'svelte/easing';
 
 	let {
 		statblock,
@@ -196,7 +198,7 @@
 		</div>
 
 		{#if showNotes}
-			<label class="gr-notes">
+			<label class="gr-notes" transition:slide={{ duration: 180, easing: cubicOut }}>
 				Заметки
 				<textarea value={notes} onchange={(e) => onNotesChange?.((e.target as HTMLTextAreaElement).value)}
 				></textarea>

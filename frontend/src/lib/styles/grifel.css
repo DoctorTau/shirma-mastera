@@ -73,3 +73,82 @@
 	font-family: var(--gr-font-body);
 	color: var(--gr-ink);
 }
+
+/* ---- Motion ---- */
+:root {
+	--gr-ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+	--gr-ease: ease;
+	--gr-duration-press: 140ms;
+	--gr-duration-base: 180ms;
+}
+
+/* Press feedback + state transitions for every pressable element. Applies
+   site-wide since every page imports this stylesheet — keeps motion
+   consistent without repeating it per component. */
+button,
+a.btn,
+a.gr-pill-btn,
+a.gr-dndsu-btn,
+.gr-tab,
+.gr-pill-btn {
+	transition:
+		transform var(--gr-duration-press) var(--gr-ease-out),
+		background-color var(--gr-duration-base) var(--gr-ease),
+		border-color var(--gr-duration-base) var(--gr-ease),
+		color var(--gr-duration-base) var(--gr-ease),
+		opacity var(--gr-duration-base) var(--gr-ease);
+}
+button:active:not(:disabled),
+a.btn:active,
+a.gr-pill-btn:active,
+a.gr-dndsu-btn:active,
+.gr-tab:active,
+.gr-pill-btn:active {
+	transform: scale(0.97);
+}
+button:disabled {
+	cursor: default;
+}
+
+/* Replace the default blue browser ring with a theme-aware one. */
+input,
+textarea,
+select {
+	transition:
+		border-color var(--gr-duration-base) var(--gr-ease),
+		box-shadow var(--gr-duration-base) var(--gr-ease);
+}
+/* !important: per-component scoped `input { border }` rules (Svelte adds an
+   ancestor class to its scoping selector) otherwise outrank this global
+   focus ring on specificity. Focus indication should never lose that fight. */
+input:focus,
+textarea:focus,
+select:focus {
+	outline: none;
+	border-color: var(--gr-accent) !important;
+	box-shadow: 0 0 0 3px rgba(122, 31, 31, 0.16) !important;
+}
+
+/* Hover only on devices with real hover — this is an iPad-first app, and
+   touch taps must never leave a "stuck" hover state behind. */
+@media (hover: hover) and (pointer: fine) {
+	.results li a,
+	.list li,
+	.pick-list li,
+	.combatant-list li {
+		transition:
+			background-color var(--gr-duration-base) var(--gr-ease),
+			border-color var(--gr-duration-base) var(--gr-ease);
+	}
+}
+
+@media (prefers-reduced-motion: reduce) {
+	button:active:not(:disabled),
+	a.btn:active,
+	a.gr-pill-btn:active,
+	a.gr-dndsu-btn:active,
+	.gr-tab:active,
+	.gr-pill-btn:active {
+		transform: none;
+	}
+}

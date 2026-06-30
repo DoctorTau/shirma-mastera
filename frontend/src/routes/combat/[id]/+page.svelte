@@ -9,6 +9,8 @@
 	import { CONDITIONS } from '$lib/types';
 	import { parseHpNumber } from '$lib/hp';
 	import GrifelStatBlock from '$lib/components/GrifelStatBlock.svelte';
+	import { slide } from 'svelte/transition';
+	import { cubicOut } from 'svelte/easing';
 
 	let encounter = $state<Encounter | null>(null);
 	let selectedId = $state<string | null>(null);
@@ -267,7 +269,7 @@
 				</div>
 
 				{#if showAddPanel}
-					<div class="gr-add-panel">
+					<div class="gr-add-panel" transition:slide={{ duration: 180, easing: cubicOut }}>
 						<input placeholder="Поиск монстра…" bind:value={addSearch} oninput={onAddSearchInput} />
 						<input type="number" min="1" bind:value={addCount} class="gr-add-count" />
 						{#if addResults.length}
@@ -735,6 +737,9 @@
 	}
 	.gr-hp-fill {
 		height: 100%;
+		transition:
+			width 220ms var(--gr-ease-out),
+			background-color 220ms var(--gr-ease);
 	}
 	.gr-hp-good {
 		background: linear-gradient(var(--gr-hp-good-1), var(--gr-hp-good-2));
