@@ -368,4 +368,41 @@
 		color: var(--gr-accent);
 		cursor: pointer;
 	}
+
+	/* Phone width: the section rail has no room as a sidebar, so it becomes
+	   a horizontal-scroll chip strip above the results, and the tile grid
+	   drops to a single column. */
+	@media (max-width: 680px) {
+		.gr-bestiary {
+			flex-direction: column;
+			margin: calc(var(--gr-space-lg) * -1);
+		}
+		.rail {
+			width: 100%;
+			flex-direction: row;
+			align-items: center;
+			overflow-x: auto;
+			overflow-y: visible;
+			border-right: none;
+			border-bottom: 1.5px solid var(--gr-parchment-border);
+			padding: var(--gr-space-sm) var(--gr-space-md);
+		}
+		.rail-label {
+			display: none;
+		}
+		.rail-item {
+			flex: none;
+			white-space: nowrap;
+			border-radius: 20px;
+			padding: 0.4375rem 0.8125rem;
+			font-size: 0.75rem;
+		}
+		.cache-card {
+			display: none;
+		}
+		.grid {
+			grid-template-columns: 1fr;
+			padding-bottom: calc(var(--gr-space-lg) + 62px + env(safe-area-inset-bottom, 0px));
+		}
+	}
 </style>

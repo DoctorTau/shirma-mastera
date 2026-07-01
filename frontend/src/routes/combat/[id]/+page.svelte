@@ -14,6 +14,7 @@
 
 	let encounter = $state<Encounter | null>(null);
 	let selectedId = $state<string | null>(null);
+	let mobileSheetOpen = $state(false);
 	let selectedStatblock = $state<StatBlock | null>(null);
 	let selectedLoading = $state(false);
 	let selectedSourceUrl = $state<string | undefined>(undefined);
@@ -348,7 +349,13 @@
 
 							<div class="gr-row-main">
 								<div class="gr-row-top">
-									<button class="gr-name-btn" onclick={() => (selectedId = c.id)}>{c.displayName}</button>
+									<button
+										class="gr-name-btn"
+										onclick={() => {
+											selectedId = c.id;
+											mobileSheetOpen = true;
+										}}>{c.displayName}</button
+									>
 									{#if c.isPc}<span class="gr-tag gr-tag-player">Игрок</span>{/if}
 									{#if active}<span class="gr-badge-hod">Ход</span>{/if}
 									{#if down}<span class="gr-badge-down">Без сознания</span>{/if}
@@ -423,7 +430,22 @@
 				</div>
 			</div>
 
-			<div class="gr-right">
+			{#if mobileSheetOpen}
+				<div
+					class="gr-sheet-backdrop"
+					role="button"
+					tabindex="-1"
+					aria-label="Закрыть статблок"
+					onclick={() => (mobileSheetOpen = false)}
+					onkeydown={(e) => {
+						if (e.key === 'Escape') mobileSheetOpen = false;
+					}}
+					in:fade={{ duration: 180 }}
+					out:fade={{ duration: 130 }}
+				></div>
+			{/if}
+			<div class="gr-right" class:gr-right-open={mobileSheetOpen}>
+				<button class="gr-sheet-close" onclick={() => (mobileSheetOpen = false)}>✕</button>
 				{#key selected?.id}
 					<div class="gr-right-inner" in:fade={{ duration: 150 }}>
 						{#if selectedLoading}
@@ -934,6 +956,7 @@
 		min-width: 0;
 		background: var(--gr-parchment-panel);
 		overflow-y: auto;
+		position: relative;
 	}
 	.gr-right-inner {
 		height: 100%;
@@ -941,5 +964,105 @@
 	.gr-panel-msg {
 		padding: 2rem;
 		color: var(--gr-ink-muted);
+	}
+	.gr-sheet-close {
+		display: none;
+	}
+	.gr-sheet-backdrop {
+		display: none;
+	}
+
+	/* Phone width: the statblock panel becomes a sheet that slides up over
+	   the initiative list instead of sitting beside it — there's no room
+	   for a side-by-side split at this width. */
+	@media (max-width: 680px) {
+		.gr-app {
+			margin: calc(var(--gr-space-lg) * -1);
+		}
+		/* HP stepper is the single most-tapped control during phone play —
+		   grow it to the 44px touch-target minimum here without touching
+		   the iPad-tuned density above. */
+		.gr-dmg-stepper > * {
+			height: 2.75rem;
+		}
+		.gr-dmg-btn {
+			flex-basis: 2.75rem;
+			width: 2.75rem;
+			font-size: 1.25rem;
+		}
+		.gr-layout {
+			flex-direction: column;
+		}
+		.gr-left {
+			width: 100%;
+			min-width: 0;
+			max-width: none;
+			border-right: none;
+		}
+		.gr-turn-controls {
+			padding-bottom: calc(62px + env(safe-area-inset-bottom, 0px));
+		}
+		.gr-sheet-backdrop {
+			display: block;
+			position: fixed;
+			inset: 0;
+			z-index: 30;
+			background: rgba(10, 7, 5, 0.42);
+			border: none;
+			padding: 0;
+		}
+		.gr-right {
+			display: block;
+			position: fixed;
+			left: 0;
+			right: 0;
+			bottom: 0;
+			top: 15%;
+			z-index: 31;
+			border-radius: 22px 22px 0 0;
+			box-shadow: 0 -20px 50px rgba(0, 0, 0, 0.5);
+			transform: translateY(100%);
+			opacity: 0;
+			visibility: hidden;
+			pointer-events: none;
+			transition:
+				transform 160ms var(--gr-ease-out),
+				opacity 160ms var(--gr-ease-out),
+				visibility 0s linear 160ms;
+		}
+		.gr-right-open {
+			transform: translateY(0);
+			opacity: 1;
+			visibility: visible;
+			pointer-events: auto;
+			transition:
+				transform 240ms var(--gr-ease-out),
+				opacity 240ms var(--gr-ease-out),
+				visibility 0s linear 0s;
+		}
+		@media (prefers-reduced-motion: reduce) {
+			.gr-right,
+			.gr-right-open {
+				transform: none;
+				transition-property: opacity, visibility;
+			}
+		}
+		.gr-sheet-close {
+			display: flex;
+			position: absolute;
+			left: 12px;
+			top: 11px;
+			z-index: 1;
+			width: 28px;
+			height: 28px;
+			align-items: center;
+			justify-content: center;
+			font-size: 0.8125rem;
+			color: var(--gr-ink-soft);
+			background: rgba(243, 227, 198, 0.92);
+			border: none;
+			border-radius: var(--gr-radius-md);
+			cursor: pointer;
+		}
 	}
 </style>

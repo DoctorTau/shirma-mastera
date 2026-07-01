@@ -91,6 +91,7 @@
 		display: flex;
 		gap: var(--gr-space-md);
 		align-items: center;
+		flex-wrap: wrap;
 	}
 	.gr-primary-btn {
 		font-family: var(--gr-font-display);

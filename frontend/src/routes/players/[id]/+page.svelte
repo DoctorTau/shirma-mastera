@@ -91,6 +91,7 @@
 	.row {
 		display: flex;
 		gap: var(--gr-space-md);
+		flex-wrap: wrap;
 	}
 	label {
 		display: flex;
@@ -99,6 +100,9 @@
 		font-size: 0.8rem;
 		color: var(--gr-ink-muted);
 		flex: 1;
+	}
+	.row label {
+		flex: 1 1 8rem;
 	}
 	input,
 	textarea {
@@ -113,6 +117,7 @@
 		display: flex;
 		gap: var(--gr-space-md);
 		align-items: center;
+		flex-wrap: wrap;
 	}
 	.gr-primary-btn {
 		font-family: var(--gr-font-display);

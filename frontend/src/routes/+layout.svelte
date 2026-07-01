@@ -11,9 +11,9 @@
 	let { children } = $props();
 
 	const navItems = [
-		{ href: '/encounters', label: 'Бой' },
-		{ href: '/creatures', label: 'Мои существа' },
-		{ href: '/bestiary', label: 'Справочник' }
+		{ href: '/encounters', label: 'Бой', icon: '⚔' },
+		{ href: '/creatures', label: 'Мои существа', icon: '✎' },
+		{ href: '/bestiary', label: 'Справочник', icon: '▤' }
 	];
 
 	onMount(() => {
@@ -58,6 +58,19 @@
 		<main class="app-main">
 			{@render children()}
 		</main>
+		<nav class="gr-bottom-tabs">
+			{#each navItems as item (item.href)}
+				<a
+					href={item.href}
+					class="gr-bottom-tab"
+					class:gr-bottom-tab-active={page.url.pathname.startsWith(item.href) ||
+						(item.href === '/encounters' && page.url.pathname.startsWith('/combat/'))}
+				>
+					<span class="gr-bottom-tab-icon">{item.icon}</span>
+					<span class="gr-bottom-tab-label">{item.label}</span>
+				</a>
+			{/each}
+		</nav>
 	</div>
 {:else}
 	{@render children()}
@@ -151,5 +164,68 @@
 		background: var(--gr-parchment-panel);
 		background-image: radial-gradient(circle at 20% 0%, rgba(255, 255, 255, 0.5), transparent 60%);
 		padding: var(--gr-space-xl);
+	}
+
+	.gr-bottom-tabs {
+		display: none;
+	}
+
+	/* Phone-width chrome: top tab links collapse into a fixed bottom tab
+	   bar (PWA convention — thumb-reachable, matches the iPhone reference). */
+	@media (max-width: 680px) {
+		.gr-tabs {
+			display: none;
+		}
+		.gr-header-spacer {
+			flex: 1;
+		}
+		.app-main {
+			padding: var(--gr-space-lg);
+			padding-bottom: calc(var(--gr-space-lg) + 62px + env(safe-area-inset-bottom, 0px));
+		}
+		.gr-bottom-tabs {
+			position: fixed;
+			left: 0;
+			right: 0;
+			bottom: 0;
+			z-index: 20;
+			display: flex;
+			gap: 4px;
+			padding: 8px 10px calc(8px + env(safe-area-inset-bottom, 10px));
+			background: #1a1310;
+			background-image: linear-gradient(180deg, #241a14, #160f0b);
+			border-top: 1px solid var(--gr-ink-soft);
+		}
+		.gr-bottom-tab {
+			flex: 1;
+			display: flex;
+			flex-direction: column;
+			align-items: center;
+			gap: 3px;
+			padding: 5px 0;
+			color: var(--gr-cream-dim);
+			opacity: 0.68;
+			text-decoration: none;
+			transition:
+				color var(--gr-duration-base) var(--gr-ease),
+				opacity var(--gr-duration-base) var(--gr-ease);
+		}
+		.gr-bottom-tab-icon {
+			font-size: 1.1875rem;
+			line-height: 1;
+		}
+		.gr-bottom-tab-label {
+			font-family: var(--gr-font-display);
+			font-size: 0.59375rem;
+			letter-spacing: 0.06em;
+			text-transform: uppercase;
+		}
+		.gr-bottom-tab-active {
+			color: var(--gr-cream);
+			opacity: 1;
+		}
+		.gr-bottom-tab-active .gr-bottom-tab-label {
+			font-weight: 700;
+		}
 	}
 </style>

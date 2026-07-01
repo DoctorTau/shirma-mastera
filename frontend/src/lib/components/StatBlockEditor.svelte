@@ -168,15 +168,22 @@
 		padding: 0 0.4rem;
 	}
 	.abilities-row {
-		display: flex;
+		display: grid;
+		grid-template-columns: repeat(6, 1fr);
 		gap: var(--gr-space-md);
 	}
 	.ability-input {
 		align-items: center;
+		min-width: 0;
 	}
 	.ability-input input {
-		width: 4rem;
+		width: 100%;
 		text-align: center;
+	}
+	@media (max-width: 680px) {
+		.abilities-row {
+			grid-template-columns: repeat(3, 1fr);
+		}
 	}
 	.mod {
 		color: var(--gr-ink-faint);

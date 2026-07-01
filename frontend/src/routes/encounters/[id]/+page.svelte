@@ -685,4 +685,37 @@
 		font-style: italic;
 		padding: 0.5rem 0.25rem;
 	}
+
+	/* Phone width: the saved-encounters sidebar has no room standing beside
+	   the constructor, so it becomes a horizontal-scroll strip on top. */
+	@media (max-width: 680px) {
+		.gr-encounters-screen {
+			flex-direction: column;
+			margin: calc(var(--gr-space-lg) * -1);
+		}
+		.sidebar {
+			width: 100%;
+			flex-direction: row;
+			align-items: stretch;
+			overflow-x: auto;
+			overflow-y: visible;
+			border-right: none;
+			border-bottom: 1.5px solid var(--gr-parchment-border);
+		}
+		.sidebar-head {
+			flex-direction: column;
+			align-items: flex-start;
+			gap: 0.25rem;
+			flex: none;
+			padding: 0 0.5rem 0 0.25rem;
+			border-right: 1px solid var(--gr-parchment-border);
+		}
+		.saved-item {
+			flex: none;
+			width: 11.5rem;
+		}
+		.constructor {
+			padding-bottom: calc(1.125rem + 62px + env(safe-area-inset-bottom, 0px));
+		}
+	}
 </style>

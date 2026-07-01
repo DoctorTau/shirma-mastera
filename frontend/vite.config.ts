@@ -23,7 +23,7 @@ export default defineConfig({
 				description: 'Боевая ширма и справочник монстров для мастера D&D',
 				start_url: '/',
 				display: 'standalone',
-				orientation: 'landscape',
+				orientation: 'any',
 				background_color: '#111111',
 				theme_color: '#111111',
 				icons: [
