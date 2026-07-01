@@ -1,9 +1,7 @@
-FROM node:22-bookworm-slim AS build
+FROM node:20-alpine AS build
 WORKDIR /src
 COPY package.json package-lock.json ./
-RUN npm config set fetch-retries 5 \
-  && npm config set fetch-retry-maxtimeout 120000 \
-  && npm install
+RUN npm ci
 COPY . .
 RUN npm run build
 
