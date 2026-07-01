@@ -33,9 +33,7 @@
 	<link rel="icon" href={favicon} />
 </svelte:head>
 
-{#if $authToken && page.url.pathname.startsWith('/combat/')}
-	{@render children()}
-{:else if $authToken}
+{#if $authToken}
 	<div class="app-shell">
 		<header class="gr-header">
 			<div class="gr-logo">
@@ -47,7 +45,8 @@
 					<a
 						href={item.href}
 						class="gr-tab"
-						class:gr-tab-active={page.url.pathname.startsWith(item.href)}
+						class:gr-tab-active={page.url.pathname.startsWith(item.href) ||
+							(item.href === '/encounters' && page.url.pathname.startsWith('/combat/'))}
 					>
 						{item.label}
 					</a>

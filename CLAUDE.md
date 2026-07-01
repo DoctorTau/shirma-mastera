@@ -69,3 +69,7 @@ Strong success criteria let you loop independently. Weak criteria ("make it work
 # Run and test
 
 to run and test project you can use podman
+
+When testing the app (manual testing, previewing screens, checking UI), always invoke the
+`/test-shirma` skill first — it has the local test user credentials and the target device
+(iPad 11, landscape) to size the preview browser to.

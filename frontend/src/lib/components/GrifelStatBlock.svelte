@@ -67,14 +67,9 @@
 		{#if imageUrl}
 			<img class="gr-image-img" src={imageUrl} alt={nameRu} />
 		{:else}
-			<span class="gr-image-caption">{nameEn ?? nameRu}</span>
+			<span class="gr-image-caption">og:image · bestiary/{nameEn ?? nameRu}</span>
 		{/if}
-		{#if sourceUrl}
-			<a class="gr-dndsu-btn" href={sourceUrl} target="_blank" rel="noreferrer">dnd.su ↗</a>
-		{/if}
-	</div>
-
-	<div class="gr-body">
+		<div class="gr-image-scrim"></div>
 		<header class="gr-header">
 			<h2>{nameRu}{#if nameEn}<span class="gr-name-en"> {nameEn}</span>{/if}</h2>
 			{#if statblock.sizeRu || statblock.type}
@@ -84,7 +79,12 @@
 				</p>
 			{/if}
 		</header>
+		{#if sourceUrl}
+			<a class="gr-dndsu-btn" href={sourceUrl} target="_blank" rel="noreferrer">dnd.su ↗ Обновить</a>
+		{/if}
+	</div>
 
+	<div class="gr-body">
 		<div class="gr-top-stats">
 			{#if statblock.armorClass}
 				<div><span class="gr-label">Класс доспеха</span><span class="gr-value">{statblock.armorClass} {#if statblock.armorSource}<em>({statblock.armorSource})</em>{/if}</span></div>
@@ -216,28 +216,40 @@
 	}
 	.gr-image {
 		position: relative;
-		height: 8rem;
-		background: linear-gradient(135deg, #ddc9a3, #c2ab82);
+		height: 150px;
+		overflow: hidden;
+		background: linear-gradient(135deg, #cbb88f, #cab98c);
 		background-image:
-			repeating-linear-gradient(45deg, rgba(58, 44, 28, 0.04) 0 2px, transparent 2px 14px),
-			linear-gradient(135deg, #ddc9a3, #c2ab82);
+			repeating-linear-gradient(135deg, #c2ad7e 0 14px, #cab98c 14px 28px);
+	}
+	.gr-image-caption {
+		position: absolute;
+		inset: 0;
 		display: flex;
 		align-items: center;
 		justify-content: center;
-	}
-	.gr-image-caption {
 		font-family: ui-monospace, Menlo, monospace;
 		font-size: 0.75rem;
-		letter-spacing: 0.08em;
+		letter-spacing: 0.1em;
 		color: #7a6a4a;
 	}
 	.gr-image-photo {
 		background: var(--gr-ink);
 	}
 	.gr-image-img {
+		position: absolute;
+		inset: 0;
 		width: 100%;
 		height: 100%;
 		object-fit: cover;
+	}
+	.gr-image-scrim {
+		position: absolute;
+		left: 0;
+		right: 0;
+		bottom: 0;
+		height: 80px;
+		background: linear-gradient(180deg, transparent, rgba(40, 30, 18, 0.78));
 	}
 	.gr-dndsu-btn {
 		position: absolute;
@@ -257,24 +269,32 @@
 	.gr-body {
 		padding: 1.1rem 1.25rem 1.5rem;
 	}
+	.gr-header {
+		position: absolute;
+		left: 22px;
+		bottom: 13px;
+		color: #f5ead2;
+	}
 	.gr-header h2 {
 		margin: 0;
 		font-family: var(--gr-font-display);
-		font-size: 1.4rem;
+		font-size: 1.75rem;
 		font-weight: 700;
-		color: var(--gr-ink);
+		letter-spacing: 0.02em;
+		text-shadow: 0 2px 6px rgba(0, 0, 0, 0.5);
 	}
 	.gr-name-en {
-		font-weight: 400;
+		font-weight: 500;
 		font-style: italic;
-		font-size: 0.95rem;
-		color: var(--gr-ink-muted);
+		font-size: 1.0625rem;
+		opacity: 0.82;
+		font-family: var(--gr-font-body);
 	}
 	.gr-meta {
 		font-style: italic;
-		color: var(--gr-ink-muted);
-		margin: 0.2rem 0 0;
-		font-size: 0.9rem;
+		opacity: 0.92;
+		margin: 0.1rem 0 0;
+		font-size: 0.8125rem;
 	}
 	.gr-top-stats {
 		display: flex;

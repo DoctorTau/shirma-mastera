@@ -105,7 +105,9 @@ func (s *Service) run(ctx context.Context, kind string, force bool) (RunStats, e
 		toProcess = catalog
 	}
 
-	for _, entry := range toProcess {
+	log.Printf("crawl: %s run starting, %d cards to process (catalog has %d total)", kind, len(toProcess), len(catalog))
+
+	for i, entry := range toProcess {
 		select {
 		case <-ctx.Done():
 			s.finishRun(ctx, runID, "cancelled", stats)
@@ -123,6 +125,11 @@ func (s *Service) run(ctx context.Context, kind string, force bool) (RunStats, e
 			stats.Added++
 		} else {
 			stats.Updated++
+		}
+
+		if (i+1)%50 == 0 || i+1 == len(toProcess) {
+			log.Printf("crawl: %s progress %d/%d (added=%d updated=%d errors=%d)",
+				kind, i+1, len(toProcess), stats.Added, stats.Updated, len(stats.Errors))
 		}
 	}
 

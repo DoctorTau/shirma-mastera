@@ -2,6 +2,19 @@
    Tokens extracted from the DM Companion iPad design mockup. */
 @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700&family=Spectral:ital,wght@0,400;0,600;0,700;1,400&display=swap');
 
+/* Base reset — without this, the browser's default 8px body margin adds
+   an extra scrollbar on top of any 100vh layout in the app. */
+*,
+*::before,
+*::after {
+	box-sizing: border-box;
+}
+html,
+body {
+	margin: 0;
+	padding: 0;
+}
+
 :root {
 	--gr-font-display: 'Cinzel', Georgia, serif;
 	--gr-font-body: 'Spectral', Georgia, serif;
@@ -19,6 +32,7 @@
 	--gr-parchment-list: #eadfc0;
 	--gr-parchment-panel: #efe6d3;
 	--gr-parchment-card: #f3ecda;
+	--gr-parchment-active: #fbf5e7;
 	--gr-parchment-highlight: #f4e9d4;
 	--gr-parchment-footer: #e3d6ba;
 	--gr-parchment-border: #cdbb95;
@@ -77,6 +91,7 @@
 /* ---- Motion ---- */
 :root {
 	--gr-ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+	--gr-ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
 	--gr-ease: ease;
 	--gr-duration-press: 140ms;
 	--gr-duration-base: 180ms;

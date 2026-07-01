@@ -9,7 +9,7 @@
 	import { CONDITIONS } from '$lib/types';
 	import { parseHpNumber } from '$lib/hp';
 	import GrifelStatBlock from '$lib/components/GrifelStatBlock.svelte';
-	import { slide } from 'svelte/transition';
+	import { slide, scale, fade } from 'svelte/transition';
 	import { cubicOut } from 'svelte/easing';
 
 	let encounter = $state<Encounter | null>(null);
@@ -22,7 +22,12 @@
 	let addResults = $state<Monster[]>([]);
 	let addCount = $state(1);
 	let searchTimer: ReturnType<typeof setTimeout>;
-	const statblockCache = new Map<string, StatBlock>();
+	let selectedNameEn = $state<string | undefined>(undefined);
+	let selectedImageUrl = $state<string | undefined>(undefined);
+	let acByCombatant = $state<Record<string, string>>({});
+	let dmgAmount = $state(5);
+	const statblockCache = new Map<string, StatBlock & { nameEn?: string; imageUrl?: string }>();
+	const playerCache = new Map<string, { ac?: number }>();
 
 	const sorted = $derived(
 		[...(encounter?.combatants ?? [])].sort((a, b) => {
@@ -95,7 +100,9 @@
 		void patchCombatant(c, { initiative: value });
 	}
 
-	async function fetchStatblock(c: Combatant): Promise<{ statblock: StatBlock | null; sourceUrl?: string }> {
+	async function fetchStatblock(
+		c: Combatant
+	): Promise<{ statblock: (StatBlock & { nameEn?: string; imageUrl?: string }) | null; sourceUrl?: string }> {
 		if (!c.sourceId) return { statblock: null };
 		const cacheKey = c.sourceId + (c.monsterEdition ?? '');
 		if (statblockCache.has(cacheKey)) {
@@ -104,13 +111,15 @@
 		try {
 			if (c.sourceType === 'monster') {
 				const m = await api.get<Monster>(`/monsters/${c.sourceId}`);
-				statblockCache.set(cacheKey, m.statblock);
-				return { statblock: m.statblock, sourceUrl: m.sourceUrl };
+				const sb = { ...m.statblock, nameEn: m.nameEn, imageUrl: m.imageUrl };
+				statblockCache.set(cacheKey, sb);
+				return { statblock: sb, sourceUrl: m.sourceUrl };
 			}
 			if (c.sourceType === 'created_creature') {
 				const cc = await api.get<CreatedCreature>(`/creatures/${c.sourceId}`);
-				statblockCache.set(cacheKey, cc.statblock);
-				return { statblock: cc.statblock };
+				const sb = { ...cc.statblock, nameEn: cc.nameEn };
+				statblockCache.set(cacheKey, sb);
+				return { statblock: sb };
 			}
 		} catch {
 			return { statblock: null };
@@ -118,18 +127,38 @@
 		return { statblock: null };
 	}
 
-	async function rollInitiative(c: Combatant) {
-		const { statblock: sb } = await fetchStatblock(c);
-		const dexMod = sb?.abilities?.dex?.mod ?? 0;
-		const roll = Math.floor(Math.random() * 20) + 1 + dexMod;
-		setInitiative(c, roll);
+	async function loadAc(c: Combatant) {
+		if (acByCombatant[c.id] !== undefined) return;
+		if (c.sourceType === 'player_character' && c.sourceId) {
+			try {
+				let p = playerCache.get(c.sourceId);
+				if (!p) {
+					p = await api.get<{ ac?: number }>(`/players/${c.sourceId}`);
+					playerCache.set(c.sourceId, p);
+				}
+				if (p.ac != null) acByCombatant = { ...acByCombatant, [c.id]: String(p.ac) };
+			} catch {
+				/* no AC available offline */
+			}
+			return;
+		}
+		if (c.sourceType === 'monster' || c.sourceType === 'created_creature') {
+			const { statblock } = await fetchStatblock(c);
+			if (statblock?.armorClass) acByCombatant = { ...acByCombatant, [c.id]: statblock.armorClass };
+		}
 	}
+
+	$effect(() => {
+		for (const c of sorted) void loadAc(c);
+	});
 
 	$effect(() => {
 		const c = selected;
 		if (!c) {
 			selectedStatblock = null;
 			selectedSourceUrl = undefined;
+			selectedNameEn = undefined;
+			selectedImageUrl = undefined;
 			return;
 		}
 		selectedLoading = true;
@@ -137,6 +166,8 @@
 			if (selected?.id === c.id) {
 				selectedStatblock = statblock;
 				selectedSourceUrl = sourceUrl;
+				selectedNameEn = statblock?.nameEn;
+				selectedImageUrl = statblock?.imageUrl;
 				selectedLoading = false;
 			}
 		});
@@ -163,6 +194,7 @@
 		if (!encounter || sorted.length === 0) return;
 		const idx = sorted.findIndex((c) => c.id === encounter!.activeCombatantId);
 		const nextIdx = idx + 1;
+		selectedId = null;
 		if (nextIdx >= sorted.length) {
 			void patchState({ round: encounter.round + 1, activeCombatantId: sorted[0].id });
 		} else {
@@ -174,6 +206,7 @@
 		if (!encounter || sorted.length === 0) return;
 		const idx = sorted.findIndex((c) => c.id === encounter!.activeCombatantId);
 		const prevIdx = idx - 1;
+		selectedId = null;
 		if (prevIdx < 0) {
 			void patchState({
 				round: Math.max(1, encounter.round - 1),
@@ -219,7 +252,9 @@
 		showAddPanel = false;
 	}
 
-	window.addEventListener('online', () => void flushMutationQueue());
+	if (typeof window !== 'undefined') {
+		window.addEventListener('online', () => void flushMutationQueue());
+	}
 
 	function hpFraction(c: Combatant): number {
 		if (!c.maxHp) return 1;
@@ -242,21 +277,14 @@
 	<div class="gr-loading">Загрузка...</div>
 {:else}
 	<div class="gr-app">
-		<header class="gr-header">
-			<div class="gr-logo">✦ Грифель</div>
-			<nav class="gr-tabs">
-				<a href="/bestiary" class="gr-tab">Справочник</a>
-				<a href="/encounters" class="gr-tab">Энкаунтеры</a>
-				<span class="gr-tab gr-tab-active">Бой</span>
-			</nav>
-			<div class="gr-header-spacer"></div>
+		<div class="gr-combat-toolbar">
 			<div class="gr-round">
 				<span class="gr-round-label">Раунд</span>
 				<span class="gr-round-num">{encounter.round}</span>
 			</div>
 			<button class="gr-icon-btn" title="К энкаунтерам" onclick={() => goto('/encounters')}>⤺</button>
 			<button class="gr-icon-btn" title="Завершить бой" onclick={endCombat}>⚙</button>
-		</header>
+		</div>
 
 		<div class="gr-layout">
 			<div class="gr-left">
@@ -295,18 +323,28 @@
 							class:down
 							class:selected={selected?.id === c.id}
 						>
-							{#if active}<span class="gr-active-bar"></span>{/if}
-
-							<button
+							<div
 								class="gr-init-circle"
 								class:pc={c.isPc}
 								class:down
 								onclick={() => (selectedId = c.id)}
+								onkeydown={(e) => {
+									if (e.key === 'Enter' || e.key === ' ') selectedId = c.id;
+								}}
+								role="button"
+								tabindex="0"
 								title="Показать статблок"
 							>
-								<span class="gr-init-num">{c.initiative ?? '—'}</span>
+								<input
+									class="gr-init-num-input"
+									type="number"
+									value={c.initiative ?? ''}
+									onclick={(e) => e.stopPropagation()}
+									onfocus={() => (selectedId = c.id)}
+									onchange={(e) => setInitiative(c, Number((e.target as HTMLInputElement).value))}
+								/>
 								<span class="gr-init-label">иниц</span>
-							</button>
+							</div>
 
 							<div class="gr-row-main">
 								<div class="gr-row-top">
@@ -314,15 +352,9 @@
 									{#if c.isPc}<span class="gr-tag gr-tag-player">Игрок</span>{/if}
 									{#if active}<span class="gr-badge-hod">Ход</span>{/if}
 									{#if down}<span class="gr-badge-down">Без сознания</span>{/if}
-									{#if !c.isPc && !down}
-										<button class="gr-roll" onclick={() => rollInitiative(c)} title="Бросить d20+ЛОВ">d20</button>
+									{#if acByCombatant[c.id]}
+										<span class="gr-ac">КД <b>{acByCombatant[c.id]}</b></span>
 									{/if}
-									<input
-										type="number"
-										class="gr-init-input"
-										value={c.initiative ?? ''}
-										onchange={(e) => setInitiative(c, Number((e.target as HTMLInputElement).value))}
-									/>
 								</div>
 
 								<div class="gr-hp-row">
@@ -333,34 +365,51 @@
 										>{c.currentHp ?? '—'}<span class="gr-hp-max">/{c.maxHp ?? '—'}{#if c.tempHp}+{c.tempHp}{/if}</span
 										></span
 									>
-									<div class="gr-hp-controls">
-										<button onclick={() => adjustHp(c, -5)}>−5</button>
-										<button onclick={() => adjustHp(c, -1)}>−1</button>
-										<button onclick={() => adjustHp(c, 1)}>+1</button>
-										<button onclick={() => adjustHp(c, 5)}>+5</button>
-										<button class="gr-temp" onclick={() => adjustTempHp(c, 1)} title="Временные хиты +1">врем+</button>
-										<button class="gr-temp" onclick={() => adjustTempHp(c, -1)} title="Временные хиты -1">врем−</button>
-									</div>
 								</div>
 
-								<div class="gr-conditions">
-									{#each c.conditions as cond (cond)}
-										<button class="gr-tag gr-tag-warn" onclick={() => toggleCondition(c, cond)}>{cond} ×</button>
-									{/each}
-									<select
-										class="gr-cond-select"
-										onchange={(e) => {
-											const v = (e.target as HTMLSelectElement).value;
-											if (v) toggleCondition(c, v);
-											(e.target as HTMLSelectElement).value = '';
-										}}
-									>
-										<option value="">+ состояние</option>
-										{#each CONDITIONS as cond (cond)}
-											<option value={cond}>{cond}</option>
-										{/each}
-									</select>
-								</div>
+								{#if c.conditions.length || selected?.id === c.id}
+									<div class="gr-cond-hp-row">
+										{#if selected?.id === c.id}
+											<div class="gr-dmg-stepper">
+												<button class="gr-dmg-btn gr-dmg-minus" onclick={() => adjustHp(c, -dmgAmount)}>−</button>
+												<input type="number" class="gr-dmg-amount" bind:value={dmgAmount} min="0" />
+												<button class="gr-dmg-btn gr-dmg-plus" onclick={() => adjustHp(c, dmgAmount)}>+</button>
+												<button
+													class="gr-temp-btn"
+													title="Временные хиты"
+													onclick={() => adjustTempHp(c, dmgAmount)}
+												>
+													врем
+												</button>
+											</div>
+										{/if}
+
+										<div class="gr-condition-tags">
+											{#each c.conditions as cond (cond)}
+												<button
+												class="gr-tag gr-tag-warn"
+												onclick={() => toggleCondition(c, cond)}
+												out:scale={{ duration: 140, start: 0.9 }}>{cond} ×</button
+											>
+											{/each}
+											{#if selected?.id === c.id}
+												<select
+													class="gr-cond-select"
+													onchange={(e) => {
+														const v = (e.target as HTMLSelectElement).value;
+														if (v) toggleCondition(c, v);
+														(e.target as HTMLSelectElement).value = '';
+													}}
+												>
+													<option value="">+ состояние</option>
+													{#each CONDITIONS.filter((cond) => !c.conditions.includes(cond)) as cond (cond)}
+														<option value={cond}>{cond}</option>
+													{/each}
+												</select>
+											{/if}
+										</div>
+									</div>
+								{/if}
 							</div>
 						</li>
 					{:else}
@@ -375,19 +424,25 @@
 			</div>
 
 			<div class="gr-right">
-				{#if selectedLoading}
-					<p class="gr-panel-msg">Загрузка...</p>
-				{:else if selected && selectedStatblock}
-					<GrifelStatBlock
-						statblock={selectedStatblock}
-						nameRu={selected.displayName}
-						sourceUrl={selectedSourceUrl}
-						notes={selected.notes}
-						onNotesChange={(value) => selected && patchCombatant(selected, { notes: value })}
-					/>
-				{:else}
-					<p class="gr-panel-msg">Нет статблока для этого участника.</p>
-				{/if}
+				{#key selected?.id}
+					<div class="gr-right-inner" in:fade={{ duration: 150 }}>
+						{#if selectedLoading}
+							<p class="gr-panel-msg">Загрузка...</p>
+						{:else if selected && selectedStatblock}
+							<GrifelStatBlock
+								statblock={selectedStatblock}
+								nameRu={selected.displayName}
+								nameEn={selectedNameEn}
+								imageUrl={selectedImageUrl}
+								sourceUrl={selectedSourceUrl}
+								notes={selected.notes}
+								onNotesChange={(value) => selected && patchCombatant(selected, { notes: value })}
+							/>
+						{:else}
+							<p class="gr-panel-msg">Нет статблока для этого участника.</p>
+						{/if}
+					</div>
+				{/key}
 			</div>
 		</div>
 	</div>
@@ -403,53 +458,22 @@
 	.gr-app {
 		display: flex;
 		flex-direction: column;
-		height: 100vh;
+		margin: calc(var(--gr-space-xl) * -1);
+		height: calc(100vh - 54px);
 		background: var(--gr-parchment-panel);
 		font-family: var(--gr-font-body);
 		color: var(--gr-ink);
 	}
 
-	.gr-header {
+	.gr-combat-toolbar {
 		flex: 0 0 auto;
-		height: 54px;
+		height: 44px;
 		display: flex;
 		align-items: center;
 		gap: 18px;
-		padding: 0 18px;
-		background: linear-gradient(var(--gr-maroon), var(--gr-maroon-dark));
-		border-bottom: 2px solid var(--gr-maroon-deep);
-		color: var(--gr-cream);
-	}
-	.gr-logo {
-		font-family: var(--gr-font-display);
-		font-weight: 700;
-		font-size: 0.9375rem;
-		letter-spacing: 0.15em;
-		color: var(--gr-cream);
-		white-space: nowrap;
-	}
-	.gr-tabs {
-		display: flex;
-		gap: 0.25rem;
-	}
-	.gr-tab {
-		font-family: var(--gr-font-display);
-		font-size: 0.75rem;
-		font-weight: 400;
-		letter-spacing: 0.075em;
-		text-transform: uppercase;
-		color: var(--gr-cream-soft);
-		opacity: 0.72;
-		padding: 0.4375rem 0.875rem;
-		border-radius: var(--gr-radius-md);
-		text-decoration: none;
-	}
-	.gr-tab-active {
-		background: var(--gr-parchment-panel);
-		color: var(--gr-accent);
-		font-weight: 700;
-		opacity: 1;
-		box-shadow: 0 1px 0 rgba(0, 0, 0, 0.2);
+		padding: 0 1.1rem;
+		background: var(--gr-parchment-list);
+		border-bottom: 1.5px solid var(--gr-parchment-border);
 	}
 	.gr-header-spacer {
 		flex: 1;
@@ -465,18 +489,18 @@
 		font-size: 0.625rem;
 		letter-spacing: 0.14em;
 		text-transform: uppercase;
-		color: var(--gr-cream-dim);
+		color: var(--gr-ink-muted);
 	}
 	.gr-round-num {
 		font-family: var(--gr-font-display);
 		font-weight: 700;
 		font-size: 1.25rem;
-		color: var(--gr-cream);
+		color: var(--gr-ink);
 	}
 	.gr-icon-btn {
 		background: none;
 		border: none;
-		color: var(--gr-cream-soft);
+		color: var(--gr-ink-muted);
 		font-size: 1.1rem;
 		cursor: pointer;
 		opacity: 0.85;
@@ -485,6 +509,7 @@
 	}
 	.gr-icon-btn:hover {
 		opacity: 1;
+		color: var(--gr-ink);
 	}
 
 	.gr-layout {
@@ -583,21 +608,24 @@
 		padding: 0.7rem 0.6rem 0.7rem 0.85rem;
 		margin-bottom: 0.4rem;
 		border-radius: var(--gr-radius-lg);
+		background: var(--gr-parchment-card);
+		border: 1.5px solid var(--gr-parchment-border-strong);
+		transition:
+			background-color var(--gr-duration-base) ease,
+			border-color var(--gr-duration-base) ease,
+			box-shadow var(--gr-duration-base) ease;
 	}
-	.gr-row.selected {
-		background: rgba(255, 255, 255, 0.45);
+	.gr-row.selected:not(.active) {
+		border-color: var(--gr-accent);
+	}
+	.gr-row.active {
+		background: var(--gr-parchment-active);
+		border: 2px solid var(--gr-accent);
+		box-shadow: 0 4px 14px -4px rgba(122, 31, 31, 0.45);
+		padding: calc(0.7rem - 0.5px) calc(0.6rem - 0.5px) calc(0.7rem - 0.5px) calc(0.85rem - 0.5px);
 	}
 	.gr-row.down {
 		opacity: 0.65;
-	}
-	.gr-active-bar {
-		position: absolute;
-		left: -1px;
-		top: 0.7rem;
-		bottom: 0.7rem;
-		width: 4px;
-		background: var(--gr-accent);
-		border-radius: 4px;
 	}
 
 	.gr-init-circle {
@@ -607,7 +635,6 @@
 		border-radius: var(--gr-radius-lg);
 		background: var(--gr-accent);
 		color: var(--gr-cream);
-		border: none;
 		display: flex;
 		flex-direction: column;
 		align-items: center;
@@ -623,10 +650,26 @@
 		background: var(--gr-down-bg);
 		color: var(--gr-down-fg);
 	}
-	.gr-init-num {
+	.gr-init-num-input {
+		width: 100%;
 		font-family: var(--gr-font-display);
 		font-weight: 700;
 		font-size: 1.1875rem;
+		text-align: center;
+		background: none;
+		border: none;
+		color: inherit;
+		padding: 0;
+		-moz-appearance: textfield;
+		appearance: textfield;
+	}
+	.gr-init-num-input::-webkit-inner-spin-button,
+	.gr-init-num-input::-webkit-outer-spin-button {
+		-webkit-appearance: none;
+		margin: 0;
+	}
+	.gr-init-num-input:focus {
+		outline: none;
 	}
 	.gr-init-label {
 		font-family: var(--gr-font-display);
@@ -656,28 +699,20 @@
 		cursor: pointer;
 		padding: 0;
 	}
-	.gr-init-input {
-		width: 3rem;
+	.gr-ac {
 		margin-left: auto;
-		padding: 0.2rem 0.3rem;
 		font-size: 0.75rem;
-		border: 1px solid var(--gr-parchment-border-strong);
-		border-radius: var(--gr-radius-sm);
-		background: white;
-		color: var(--gr-ink);
-	}
-	.gr-roll {
-		font-family: var(--gr-font-display);
-		font-size: 0.625rem;
-		padding: 0.15rem 0.4rem;
-		border: 1px solid var(--gr-parchment-border-strong);
-		border-radius: var(--gr-radius-sm);
-		background: white;
 		color: var(--gr-ink-muted);
-		cursor: pointer;
+		white-space: nowrap;
+	}
+	.gr-ac b {
+		color: var(--gr-ink);
 	}
 
 	.gr-tag {
+		display: inline-block;
+		vertical-align: middle;
+		margin: 0 0.3rem 0.3rem 0;
 		font-family: var(--gr-font-body);
 		font-size: 0.6875rem;
 		font-weight: 600;
@@ -725,7 +760,6 @@
 		align-items: center;
 		gap: 0.5rem;
 		margin-top: 0.4rem;
-		flex-wrap: wrap;
 	}
 	.gr-hp-bar {
 		flex: 1;
@@ -738,7 +772,7 @@
 	.gr-hp-fill {
 		height: 100%;
 		transition:
-			width 220ms var(--gr-ease-out),
+			width 220ms var(--gr-ease-in-out),
 			background-color 220ms var(--gr-ease);
 	}
 	.gr-hp-good {
@@ -751,6 +785,7 @@
 		background: var(--gr-hp-low);
 	}
 	.gr-hp-num {
+		flex: 0 0 auto;
 		font-size: 0.8125rem;
 		font-weight: 700;
 		color: var(--gr-ink-soft);
@@ -761,23 +796,6 @@
 		font-weight: 400;
 		color: var(--gr-ink-faint);
 	}
-	.gr-hp-controls {
-		display: flex;
-		gap: 0.2rem;
-	}
-	.gr-hp-controls button {
-		font-size: 0.6875rem;
-		padding: 0.15rem 0.35rem;
-		border: 1px solid var(--gr-parchment-border-strong);
-		border-radius: var(--gr-radius-sm);
-		background: var(--gr-parchment-card);
-		color: var(--gr-ink-soft);
-		cursor: pointer;
-	}
-	.gr-hp-controls .gr-temp {
-		color: var(--gr-player-bg);
-	}
-
 	.gr-conditions {
 		display: flex;
 		gap: 0.3rem;
@@ -785,13 +803,92 @@
 		align-items: center;
 		margin-top: 0.35rem;
 	}
+	.gr-cond-hp-row {
+		margin-top: 0.35rem;
+		overflow: hidden;
+	}
+	.gr-condition-tags {
+		display: block;
+	}
 	.gr-cond-select {
+		display: inline-block;
+		vertical-align: middle;
+		margin: 0 0.3rem 0.3rem 0;
+		font-family: var(--gr-font-body);
 		font-size: 0.6875rem;
-		padding: 0.1rem 0.2rem;
-		border: 1px solid var(--gr-parchment-border-strong);
+		font-weight: 600;
+		padding: 0.0625rem 0.4375rem;
 		border-radius: var(--gr-radius-sm);
+		border: 1px solid var(--gr-parchment-border-strong);
 		background: var(--gr-parchment-card);
 		color: var(--gr-ink-muted);
+	}
+
+	.gr-dmg-stepper {
+		float: right;
+		display: flex;
+		align-items: stretch;
+		gap: 0.375rem;
+		margin: 0 0 0.3rem 0.5rem;
+	}
+	.gr-dmg-stepper > * {
+		box-sizing: border-box;
+		height: 2rem;
+		line-height: 1;
+		margin: 0;
+	}
+	.gr-dmg-btn {
+		flex: 0 0 2rem;
+		width: 2rem;
+		border-radius: var(--gr-radius-md);
+		background: var(--gr-parchment-card);
+		border: 1px solid var(--gr-parchment-border-strong);
+		font-size: 1.125rem;
+		font-weight: 700;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		cursor: pointer;
+	}
+	.gr-dmg-minus {
+		color: var(--gr-accent);
+	}
+	.gr-dmg-plus {
+		color: var(--gr-hp-good-2);
+	}
+	.gr-dmg-amount {
+		flex: 0 0 auto;
+		width: 2.75rem;
+		border-radius: var(--gr-radius-md);
+		background: var(--gr-input-bg);
+		border: 1px solid var(--gr-parchment-border-strong);
+		text-align: center;
+		font-size: 0.875rem;
+		font-weight: 700;
+		color: var(--gr-ink-soft);
+		font-family: var(--gr-font-body);
+		padding: 0;
+		-moz-appearance: textfield;
+		appearance: textfield;
+	}
+	.gr-dmg-amount::-webkit-inner-spin-button,
+	.gr-dmg-amount::-webkit-outer-spin-button {
+		-webkit-appearance: none;
+		margin: 0;
+	}
+	.gr-temp-btn {
+		flex: 0 1 auto;
+		min-width: 2.75rem;
+		padding: 0 0.625rem;
+		border-radius: var(--gr-radius-md);
+		background: var(--gr-parchment-card);
+		border: 1px solid var(--gr-parchment-border-strong);
+		font-family: var(--gr-font-display);
+		font-size: 0.625rem;
+		letter-spacing: 0.04em;
+		text-transform: uppercase;
+		color: var(--gr-player-bg);
+		cursor: pointer;
 	}
 
 	.gr-empty {
@@ -802,6 +899,7 @@
 	.gr-turn-controls {
 		flex: 0 0 auto;
 		display: flex;
+		background: var(--gr-parchment-footer);
 		border-top: 1.5px solid var(--gr-parchment-border);
 	}
 	.gr-prev-btn {
@@ -836,6 +934,9 @@
 		min-width: 0;
 		background: var(--gr-parchment-panel);
 		overflow-y: auto;
+	}
+	.gr-right-inner {
+		height: 100%;
 	}
 	.gr-panel-msg {
 		padding: 2rem;
